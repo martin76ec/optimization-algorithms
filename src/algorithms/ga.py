@@ -1,115 +1,69 @@
-import random
-import matplotlib.pyplot as plt
 import numpy as np
 
-def init_population(population_size, chromosome_len):
-    '''Initialize population as a list of random list of bits'''
-    population = []
-    for _ in range(population_size):
-        cromosome = ''
-        for _ in range(chromosome_len):
-            bit = random.choice([0,1])
-            cromosome += str(bit)
-        population.append(cromosome)
-    return population
 
-def bin2float(num):
-    '''convert a binary number to float.
-    num: str'''
-    if num[0] == '1':
-        #negative number
-        return -1 * int(num[1:],base=2)
-    elif num[0] == '0':
-        #positive number
-        return int(num[1:], base=2)
+def genetic_algorithm(
+    fitness_func,
+    population_size,
+    chromosome_len,
+    max_epochs,
+    n_elites,
+    mut_prob,
+    bounds,
+):
+    population = np.random.randint(2, size=(population_size, chromosome_len))
 
-def fitness(fun, population, chromosome_len):
-    population_fitness = []
-    for individual in population:
-        x = individual[:chromosome_len//2]
-        x = bin2float(x)
-        y = individual[chromosome_len//2:]
-        y = bin2float(y)
+    n_bits_per_var = chromosome_len // 2
 
-        individual_fitness = fun(x/100, y/100) #Considering 3 decimals
-        population_fitness.append(individual_fitness)
-    return population_fitness
-
-
-def pick_elites(population, population_fitness, n_elites):
-    s_pop = []
-    for _, individual in sorted(zip(population_fitness, population)):
-        s_pop.append(individual)
-    return s_pop[:n_elites]
-
-def mutation(individual, chromosome_len, mutation_prob):
-    do_mutation = random.choices([1,0], weights=[mutation_prob, 1-mutation_prob])[0]
-    if do_mutation:
-        mutation_index = random.randint(0, chromosome_len-1)
-        ls_individual = list(individual)
-        if ls_individual[mutation_index] == '0':
-            ls_individual[mutation_index] = '1'
-            individual = ''.join(ls_individual)
-        elif ls_individual[mutation_index] == '1':
-            ls_individual[mutation_index] = '0'
-            individual = ''.join(ls_individual)
-    return individual
-
-def crossover(elites, chromosome_len):
-    father, mother = random.choices(elites, k=2)
-    crossover_index = random.randint(1, chromosome_len-1)
-
-    child0 = father[:crossover_index] + mother[crossover_index:]
-    child1 = mother[:crossover_index] + father[crossover_index:]
-
-    return [child0, child1]
-
-def genetic_algorithm(fun, population_size, chromosome_len, max_epochs, n_elites, mut_prob):
-    population = init_population(population_size, chromosome_len)
-    best_ind, best_fit = None, float('inf')
-    scores = []
+    best_eval = float("inf")
+    best_sol_coords = None
 
     for epoch in range(max_epochs):
-        population_fitness = fitness(fun, population, chromosome_len)
+        decoded_coords = []
+        costs = []
 
-        if min(population_fitness) < best_fit:
-            best_fit = min(population_fitness)
-            best_ind = population[population_fitness.index(best_fit)]
+        for individual in population:
+            bit_x = individual[:n_bits_per_var]
+            bit_y = individual[n_bits_per_var:]
 
-        elites = pick_elites(population, population_fitness, n_elites)
-        new_population = elites[:]
-        while len(new_population) < population_size:
-            childs = crossover(elites, chromosome_len)
-            childs[0], childs[1] = mutation(childs[0], chromosome_len, mut_prob), mutation(childs[1],chromosome_len, mut_prob)
-            new_population.extend(childs)
-        population = new_population
-        print('-----BEGIN-----',epoch, '\n', population, '\n', '-----END-----')
+            coords = []
+            for i, bits in enumerate([bit_x, bit_y]):
+                low, high = bounds[i]
+                int_val = int("".join(map(str, bits)), 2)
+                precision = (2**n_bits_per_var) - 1
+                real_val = low + (int_val / precision) * (high - low)
+                coords.append(real_val)
 
-        print(f"Epoch {epoch}: best_fitness = {best_fit}")
-        scores.append(best_fit)
+            cost = fitness_func(coords)
+            decoded_coords.append(coords)
+            costs.append(cost)
 
-    x = bin2float(best_ind[:chromosome_len//2])/100
-    y = bin2float(best_ind[chromosome_len//2:])/100
-    final_eval = fun(x,y)
-    return x,y,final_eval,scores
+        min_cost_idx = np.argmin(costs)
+        if costs[min_cost_idx] < best_eval:
+            best_eval = costs[min_cost_idx]
+            best_sol_coords = decoded_coords[min_cost_idx]
 
-    
+        selected_indices = []
+        for _ in range(population_size - n_elites):
+            i1, i2 = np.random.randint(0, population_size, 2)
+            selected_indices.append(i1 if costs[i1] < costs[i2] else i2)
 
-# if __name__ == "__main__":
-#     population_size = 100
-#     chromosome_len = 20
-#     max_epochs = 40
-#     n_elites = 10
-#     mut_prob = 0.2
-#
-#     f_sphere = lambda x,y: (x)**2 + (y)**2
-#
-#     x, y, final_eval,scores = genetic_algorithm(f_sphere, population_size, chromosome_len, max_epochs, n_elites, mut_prob)
-#     print("\nBest aprox found:")
-#     print(f"x = {x}, y = {y}")
-#     print(f"Final evaluation: {final_eval}")
-#
-#     plt.plot(range(len(scores)), scores, label="Global bests through epochs", color='r')
-#     plt.ylabel("Best Global Fitness")
-#     plt.xlabel("Epochs")
-#     plt.show()
+        new_population = population[selected_indices]
+
+        for i in range(0, len(new_population) - 1, 2):
+            if np.random.rand() < 0.8:
+                cp = np.random.randint(1, chromosome_len - 1)
+                parent1, parent2 = (
+                    new_population[i].copy(),
+                    new_population[i + 1].copy(),
+                )
+                new_population[i] = np.concatenate((parent1[:cp], parent2[cp:]))
+                new_population[i + 1] = np.concatenate((parent2[:cp], parent1[cp:]))
+
+        mask = np.random.rand(*new_population.shape) < mut_prob
+        new_population ^= mask
+
+        elites_indices = np.argsort(costs)[:n_elites]
+        elites = population[elites_indices]
+        population = np.vstack((new_population, elites))
+
+    return best_sol_coords, best_eval, None

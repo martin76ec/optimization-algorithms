@@ -1,9 +1,10 @@
+
+
+from playground.benchmarks import benchmarks_run
+
+
 def main():
-    # ackley with PSO
-    # ackley with SA
+    benchmarks_run()
 
-    # easoms with PSO
-    # easoms with SA
 
-    # gp with PSO
-    # gp with SA
+main()
