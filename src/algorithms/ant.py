@@ -3,14 +3,28 @@ import numpy as np
 
 def calculate_probabilities(i, pheromone, dist_matrix, visited, alpha, beta):
     n_cities = len(dist_matrix)
-    probs = []
-    for j in range(n_cities):
-        if j not in visited:
-            p = (pheromone[i][j] ** alpha) * ((1.0 / dist_matrix[i][j]) ** beta)
-            probs.append(p)
-        else:
-            probs.append(0)
-    return np.array(probs) / sum(probs)
+    mask = np.ones(n_cities, dtype=bool)
+
+    # Ensure indices are mapped correctly
+    visited_indices = list(visited)
+    mask[visited_indices] = False
+
+    # Heuristic information (1/distance)
+    eta = 1.0 / (dist_matrix[i] + 1e-10)
+
+    # Calculate components
+    phi = (pheromone[i] ** alpha) * (eta**beta)
+    phi[~mask] = 0
+
+    sum_phi = np.sum(phi)
+    if sum_phi == 0:
+        probs = np.where(mask, 1.0, 0)
+    else:
+        probs = phi / sum_phi
+
+    # Normalization fix for np.random.choice precision requirements
+    probs = probs / np.sum(probs)
+    return probs
 
 
 def construct_path(n_cities, pheromone, dist_matrix, alpha, beta):
@@ -18,14 +32,15 @@ def construct_path(n_cities, pheromone, dist_matrix, alpha, beta):
     visited = {path[0]}
 
     while len(path) < n_cities:
-        i = path[-1]
-        probs = calculate_probabilities(i, pheromone, dist_matrix, visited, alpha, beta)
-        next_city = np.random.choice(range(n_cities), p=probs)
+        curr = path[-1]
+        probs = calculate_probabilities(
+            curr, pheromone, dist_matrix, visited, alpha, beta
+        )
+        next_city = np.random.choice(n_cities, p=probs)
         path.append(next_city)
         visited.add(next_city)
 
-    dist = sum(dist_matrix[path[k]][path[k + 1]] for k in range(n_cities - 1))
-    dist += dist_matrix[path[-1]][path[0]]
+    dist = sum(dist_matrix[path[k]][path[(k + 1) % n_cities]] for k in range(n_cities))
     return path, dist
 
 
@@ -35,20 +50,21 @@ def aco_tsp(dist_matrix, n_ants, alpha, beta, rho, q, iterations):
     best_path, best_dist = None, float("inf")
 
     for _ in range(iterations):
-        all_paths, all_dists = [], []
+        paths, dists = [], []
 
         for _ in range(n_ants):
-            path, dist = construct_path(n_cities, pheromone, dist_matrix, alpha, beta)
-            all_paths.append(path)
-            all_dists.append(dist)
-
-            if dist < best_dist:
-                best_dist, best_path = dist, path
+            p, d = construct_path(n_cities, pheromone, dist_matrix, alpha, beta)
+            paths.append(p)
+            dists.append(d)
+            if d < best_dist:
+                best_dist, best_path = d, p
 
         pheromone *= 1 - rho
-        for path, dist in zip(all_paths, all_dists):
-            for k in range(n_cities - 1):
-                pheromone[path[k]][path[k + 1]] += q / dist
-            pheromone[path[-1]][path[0]] += q / dist
+        for path, dist in zip(paths, dists):
+            deposit = q / dist
+            for k in range(n_cities):
+                u, v = path[k], path[(k + 1) % n_cities]
+                pheromone[u][v] += deposit
+                pheromone[v][u] += deposit
 
     return best_path, best_dist

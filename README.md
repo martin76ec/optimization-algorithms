@@ -152,3 +152,6 @@ easom_robust                 [3.1462699377727006, 3.1514197839925657]   -0.99982
 
 1. It is considerably slower than Simulated Annealing but performs much better
 2. Almost each combination reached, or was very close, to the target
+
+
+# 
