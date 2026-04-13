@@ -82,6 +82,5 @@ def traveling_salesman():
         )
 
     plt.tight_layout()
-    # plt.savefig("./figs/tsp_ga.png")
-    fig.savefig("fig1.png")
-    fig2.savefig("fig2.png")
+    fig.savefig("./figures/fig1.png")
+    fig2.savefig("figures/fig2.png")

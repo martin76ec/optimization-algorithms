@@ -10,57 +10,49 @@ def genetic_algorithm(
     mut_prob,
     bounds,
 ):
-    population = np.random.randint(2, size=(population_size, chromosome_len))
-
-    n_bits_per_var = chromosome_len // 2
+    population = np.random.uniform(
+        low=[b[0] for b in bounds],
+        high=[b[1] for b in bounds],
+        size=(population_size, chromosome_len),
+    )
 
     best_eval = float("inf")
     best_sol_coords = None
 
-    for epoch in range(max_epochs):
-        decoded_coords = []
+    for _ in range(max_epochs):
         costs = []
 
         for individual in population:
-            bit_x = individual[:n_bits_per_var]
-            bit_y = individual[n_bits_per_var:]
-
-            coords = []
-            for i, bits in enumerate([bit_x, bit_y]):
-                low, high = bounds[i]
-                int_val = int("".join(map(str, bits)), 2)
-                precision = (2**n_bits_per_var) - 1
-                real_val = low + (int_val / precision) * (high - low)
-                coords.append(real_val)
-
-            cost = fitness_func(coords)
-            decoded_coords.append(coords)
+            cost = fitness_func(individual)
             costs.append(cost)
 
+        costs = np.array(costs)
         min_cost_idx = np.argmin(costs)
         if costs[min_cost_idx] < best_eval:
             best_eval = costs[min_cost_idx]
-            best_sol_coords = decoded_coords[min_cost_idx]
+            best_sol_coords = population[min_cost_idx].copy()
 
         selected_indices = []
         for _ in range(population_size - n_elites):
             i1, i2 = np.random.randint(0, population_size, 2)
             selected_indices.append(i1 if costs[i1] < costs[i2] else i2)
 
-        new_population = population[selected_indices]
+        new_population = population[selected_indices].copy()
 
         for i in range(0, len(new_population) - 1, 2):
             if np.random.rand() < 0.8:
-                cp = np.random.randint(1, chromosome_len - 1)
-                parent1, parent2 = (
-                    new_population[i].copy(),
-                    new_population[i + 1].copy(),
-                )
-                new_population[i] = np.concatenate((parent1[:cp], parent2[cp:]))
-                new_population[i + 1] = np.concatenate((parent2[:cp], parent1[cp:]))
+                p1, p2 = new_population[i].copy(), new_population[i + 1].copy()
+                new_population[i] = np.concatenate((p1[:cp], p2[cp:]))
+                new_population[i + 1] = np.concatenate((p2[:cp], p1[cp:]))
 
         mask = np.random.rand(*new_population.shape) < mut_prob
-        new_population ^= mask
+        noise = np.random.uniform(-1, 1, size=new_population.shape) * 0.1
+        new_population[mask] += noise[mask]
+
+        for i in range(chromosome_len):
+            new_population[:, i] = np.clip(
+                new_population[:, i], bounds[i][0], bounds[i][1]
+            )
 
         elites_indices = np.argsort(costs)[:n_elites]
         elites = population[elites_indices]

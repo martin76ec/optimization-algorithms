@@ -24,7 +24,6 @@ def ordered_crossover(parents, rate=0.8):
                 child = np.full(chrom_len, -1)
                 child[start:end] = parent_main[start:end]
 
-                # Fill remaining slots with genes from donor in order they appear
                 remaining = [gene for gene in parent_donor if gene not in child]
                 child[child == -1] = remaining
                 return child
@@ -58,7 +57,7 @@ def genetic_algorithm_tsp(
     best_eval = float("inf")
     best_tour = None
 
-    for epoch in range(max_epochs):
+    for _ in range(max_epochs):
         costs = np.array(
             [
                 np.sum(np.linalg.norm(nodes[p] - nodes[np.roll(p, -1)], axis=1))

@@ -5,14 +5,11 @@ def calculate_probabilities(i, pheromone, dist_matrix, visited, alpha, beta):
     n_cities = len(dist_matrix)
     mask = np.ones(n_cities, dtype=bool)
 
-    # Ensure indices are mapped correctly
     visited_indices = list(visited)
     mask[visited_indices] = False
 
-    # Heuristic information (1/distance)
     eta = 1.0 / (dist_matrix[i] + 1e-10)
 
-    # Calculate components
     phi = (pheromone[i] ** alpha) * (eta**beta)
     phi[~mask] = 0
 
@@ -22,7 +19,6 @@ def calculate_probabilities(i, pheromone, dist_matrix, visited, alpha, beta):
     else:
         probs = phi / sum_phi
 
-    # Normalization fix for np.random.choice precision requirements
     probs = probs / np.sum(probs)
     return probs
 

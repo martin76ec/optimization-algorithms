@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 class Particle:
@@ -12,9 +11,6 @@ class Particle:
 def particle_swarm_opt(f, p_num, n, bounds, max_epochs=100, alph1=1, alph2=1):
     phi1 = np.random.uniform()
     phi2 = np.random.uniform()
-
-    # phi1 = 0.5
-    # phi2 = 0.5
 
     particles = [Particle(bounds, n) for _ in range(p_num)]
     scores = []
