@@ -33,6 +33,41 @@ def ordered_crossover(parents, rate=0.8):
     return offspring
 
 
+def pmx_crossover(parents, rate=0.8):
+    offspring = parents.copy()
+    chrom_len = parents.shape[1]
+    for i in range(0, len(offspring) - 1, 2):
+        if np.random.rand() < rate:
+            p1, p2 = offspring[i].copy(), offspring[i + 1].copy()
+
+            def pmx_child(main, donor):
+                start, end = sorted(
+                    np.random.choice(range(chrom_len), 2, replace=False)
+                )
+                child = np.full(chrom_len, -1)
+                child[start:end] = main[start:end]
+
+                for j in range(start, end):
+                    if donor[j] in child[start:end]:
+                        continue
+                    gene = donor[j]
+                    pos = j
+                    while child[pos] != -1:
+                        mapped = child[pos]
+                        pos = np.where(donor == mapped)[0][0]
+                        if child[pos] != -1:
+                            pos = np.where(donor == child[pos])[0][0]
+                    child[pos] = donor[j]
+
+                remaining = [g for g in donor if g not in child]
+                child[child == -1] = remaining
+                return child
+
+            offspring[i] = pmx_child(p1, p2)
+            offspring[i + 1] = pmx_child(p2, p1)
+    return offspring
+
+
 def swap_mutation(population, mut_prob):
     for i in range(len(population)):
         if np.random.rand() < mut_prob:

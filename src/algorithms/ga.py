@@ -41,6 +41,7 @@ def genetic_algorithm(
 
         for i in range(0, len(new_population) - 1, 2):
             if np.random.rand() < 0.8:
+                cp = np.random.randint(1, chromosome_len)
                 p1, p2 = new_population[i].copy(), new_population[i + 1].copy()
                 new_population[i] = np.concatenate((p1[:cp], p2[cp:]))
                 new_population[i + 1] = np.concatenate((p2[:cp], p1[cp:]))

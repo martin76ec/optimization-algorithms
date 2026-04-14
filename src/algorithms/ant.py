@@ -40,7 +40,18 @@ def construct_path(n_cities, pheromone, dist_matrix, alpha, beta):
     return path, dist
 
 
-def aco_tsp(dist_matrix, n_ants, alpha, beta, rho, q, iterations):
+def aco_tsp(
+    dist_matrix,
+    n_ants,
+    alpha,
+    beta,
+    rho,
+    q,
+    iterations,
+    tau_min=None,
+    tau_max=None,
+    elitism=False,
+):
     n_cities = len(dist_matrix)
     pheromone = np.ones((n_cities, n_cities)) * 0.1
     best_path, best_dist = None, float("inf")
@@ -62,5 +73,15 @@ def aco_tsp(dist_matrix, n_ants, alpha, beta, rho, q, iterations):
                 u, v = path[k], path[(k + 1) % n_cities]
                 pheromone[u][v] += deposit
                 pheromone[v][u] += deposit
+
+        if elitism and best_path is not None:
+            elite_deposit = q / best_dist
+            for k in range(n_cities):
+                u, v = best_path[k], best_path[(k + 1) % n_cities]
+                pheromone[u][v] += elite_deposit
+                pheromone[v][u] += elite_deposit
+
+        if tau_min is not None and tau_max is not None:
+            pheromone = np.clip(pheromone, tau_min, tau_max)
 
     return best_path, best_dist

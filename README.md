@@ -154,14 +154,138 @@ easom_robust                 [3.1462699377727006, 3.1514197839925657]   -0.99982
 2. Almost each combination reached, or was very close, to the target
 
 
-# Travling Salesman 
+# Travelling Salesman
 
-## Fully Connected Nodes
+## Code
 
-[](./figures/fig1.png)
+```
 
-## Random Nodes (N x N)
+    for i, (name, g) in enumerate(graphs):
+        coords = g["positions"]
+        dist_matrix = calculate_distance_matrix(coords)
 
-[](./figures/fig2.png)
+        tour_ox, dist_ox = genetic_algorithm_tsp(
+            nodes=coords,
+            population_size=pop_size,
+            max_epochs=epochs,
+            n_elites=elites,
+            mut_prob=mutation,
+            crossover_func=ordered_crossover,
+        )
+
+        tour_pmx, dist_pmx = genetic_algorithm_tsp(
+            nodes=coords,
+            population_size=pop_size,
+            max_epochs=epochs,
+            n_elites=elites,
+            mut_prob=mutation,
+            crossover_func=pmx_crossover,
+        )
+
+        tour_aco_basic, dist_aco_basic = aco_tsp(dist_matrix=dist_matrix, **aco_params)
+
+        tour_aco_enhanced, dist_aco_enhanced = aco_tsp(
+            dist_matrix=dist_matrix,
+            **aco_params,
+            tau_min=0.01,
+            tau_max=10.0,
+            elitism=True,
+        )
+```
+
+## GA OX
+
+![](./figures/fig1_ga_ox.png)
+
+## GA PMX
+
+![](./figures/fig2_ga_pmx.png)
+
+### GA Crossover Comparison
+
+| Graph      | GA-OX  | GA-PMX  |
+|------------|--------|---------|
+| Random 1   | 2133.28| 2249.84 |
+| Random 2   | 1881.29| 2256.35 |
+| Random 3   | 1923.26| 2432.61 |
+| Grid 25    | 282.43 | 274.79  |
+| Grid 100   | 2132.38| 2390.78 |
+| Grid 225   | 8722.56| 10328.34|
+
+1. OX is better
+
+## ACO basic
+
+![](./figures/fig3_aco_basic.png)
+
+## ACO with pheromone limits and elitism
+
+![](./figures/fig4_aco_enhanced.png)
+
+### ACO Comparison (Basic vs Enhanced)
+
+| Graph      | ACO Basic | ACO Enhanced |
+|------------|-----------|--------------|
+| Random 1   | 788.22    | 787.22       |
+| Random 2   | 849.01    | 883.11       |
+| Random 3   | 838.09    | 836.10       |
+| Grid 25    | 254.14    | 254.14       |
+| Grid 100   | 1155.54   | 1123.93      |
+| Grid 225   | 2847.60   | 2961.46      |
+
+1. Results are almost the same in both configurations 
+
+### GA vs ACO Overall
+
+| Graph      | Best GA  | Best ACO |
+|------------|----------|----------|
+| Random 1   | 2133.28  | 787.22   |
+| Random 2   | 1881.29  | 849.01   |
+| Random 3   | 1923.26  | 836.10   |
+| Grid 25    | 274.79   | 254.14   |
+| Grid 100   | 2132.38  | 1123.93  |
+| Grid 225   | 8722.56  | 2847.60  |
+
+1. ACO is way better than GA on all graph configurations
+
+# TSP 10 cities 
+
+## Code
+
+*Note: the entire function is too long to paste here but you could check it in the github repo at src/playground/tsp_specific.py*
+
+```
+
+    ga_tour, ga_dist = ga_tsp_dist_matrix(distances)
+
+    aco_params = {
+        "n_ants": 20,
+        "alpha": 1.0,
+        "beta": 2.0,
+        "rho": 0.5,
+        "q": 100,
+        "iterations": 100,
+    }
+    aco_tour, aco_dist = aco_tsp(distances, **aco_params)
+```
+
+![](./figures/fig5_tsp_specific.png)
+
+| Algorithm | Distance | Path                            |
+|-----------|----------|---------------------------------|
+| GA        | 249      | 3 → 9 → 5 → 6 → 1 → 2 → 7 → 8 → 0 → 4 |
+| ACO       | 249      | 0 → 8 → 7 → 2 → 1 → 6 → 9 → 5 → 3 → 4 |
+
+1. Even if both paths are different the distance is the same 
 
 # Neuron
+
+![](./figures/fig6_neuron.png)
+
+| Method             | w0 (bias) | w1      | w2      | w3       | w4       | w5       | Loss   |
+|--------------------|-----------|---------|---------|----------|----------|----------|--------|
+| Gradient Descent   | 3.009     | 0.057   | 0.058   | -1.043   | -0.979   | -0.138   | 0.0066 |
+| Genetic Algorithm  | 10.000    | -0.123  | 0.045   | -3.284   | -3.175   | -0.081   | 0.0001 |
+
+1. GA achieves lower loss
+2. GD is faster but can get stuck in local minima

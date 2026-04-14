@@ -1,5 +1,7 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from algorithms.ant import aco_tsp
+from algorithms.ga_tsp import tournament_selection, ordered_crossover, swap_mutation
 
 
 def traveling_problem():
@@ -20,23 +22,24 @@ def traveling_problem():
 
     num_cities = len(distances)
 
+    city_coords = np.array(
+        [
+            [0, 0],
+            [29, 0],
+            [20, 15],
+            [21, 29],
+            [16, 4],
+            [31, 12],
+            [100, 50],
+            [12, 9],
+            [4, 23],
+            [31, 3],
+        ]
+    )
+
     def ga_tsp_dist_matrix(
         dist_matrix, pop_size=100, max_epochs=500, n_elites=2, mut_prob=0.1
     ):
-        import numpy as np
-
-        def get_cost(tour):
-            return sum(
-                dist_matrix[tour[i]][tour[(i + 1) % num_cities]]
-                for i in range(num_cities)
-            )
-
-        from algorithms.ga_tsp import (
-            tournament_selection,
-            ordered_crossover,
-            swap_mutation,
-        )
-
         population = np.array(
             [np.random.permutation(num_cities) for _ in range(pop_size)]
         )
@@ -44,7 +47,15 @@ def traveling_problem():
         best_tour = None
 
         for _ in range(max_epochs):
-            costs = np.array([get_cost(p) for p in population])
+            costs = np.array(
+                [
+                    sum(
+                        dist_matrix[p[i]][p[(i + 1) % num_cities]]
+                        for i in range(num_cities)
+                    )
+                    for p in population
+                ]
+            )
 
             min_idx = np.argmin(costs)
             if costs[min_idx] < best_eval:
@@ -72,8 +83,34 @@ def traveling_problem():
     }
     aco_tour, aco_dist = aco_tsp(distances, **aco_params)
 
-    print("--- Traveling Problem (custom) Results ---")
-    print(f"Genetic Algorithm: Best Distance = {ga_dist}, Path = {ga_tour}")
-    print(f"Ant Colony Optimization: Best Distance = {aco_dist}, Path = {aco_tour}")
-    print(f"Overall Minimum Distance: {min(ga_dist, aco_dist)}")
-    print(f"Overall Best Path: {ga_tour if ga_dist < aco_dist else aco_tour}")
+    print("##### TSP 10 cities ####")
+    print(f"GA: Best Distance = {ga_dist}, Path = {list(ga_tour)}")
+    print(f"ACO: Best Distance = {aco_dist}, Path = {aco_tour}")
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+
+    for ax, tour, _, title in [
+        (ax1, ga_tour, ga_dist, f"GA\nDist: {ga_dist:.2f}"),
+        (ax2, aco_tour, aco_dist, f"ACO\nDist: {aco_dist:.2f}"),
+    ]:
+        path_coords = city_coords[tour]
+        path_coords = np.vstack([path_coords, path_coords[0]])
+        ax.plot(
+            path_coords[:, 0],
+            path_coords[:, 1],
+            "o-",
+            markersize=6,
+            linewidth=1.5,
+            color="#e74c3c",
+        )
+        for idx, (x, y) in enumerate(city_coords):
+            ax.annotate(
+                str(idx), (x, y), textcoords="offset points", xytext=(4, 4), fontsize=8
+            )
+        ax.set_title(title, fontsize=12)
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+    fig.suptitle("TSP — 10-City Instance", fontsize=14, fontweight="bold")
+    plt.tight_layout()
+    fig.savefig("figures/fig5_tsp_specific.png")
